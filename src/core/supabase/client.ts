@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { env, assertConfigured } from '@/env.config';
+import { env, assertConfigured } from '../../../env.config';
 
 let supabaseClient: ReturnType<typeof createClient> | null = null;
 

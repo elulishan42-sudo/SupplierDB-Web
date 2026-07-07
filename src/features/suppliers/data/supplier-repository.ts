@@ -74,9 +74,8 @@ export class SupplierRepository {
   }
 
   async update(id: string, data: Partial<Supplier>): Promise<Supplier> {
-    const { data: result, error } = await this.client
-      .from(TABLE)
-      .update(data as any)
+    const { data: result, error } = await (this.client.from(TABLE) as any)
+      .update(data)
       .eq('id', id)
       .select()
       .single();
