@@ -557,9 +557,16 @@ export default function SupplierDetailPage() {
               <div className="flex justify-center items-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            ) : products.length === 0 ? (
+            ) : products.length === 0 && !supplier.products_services ? (
               <div className="text-center py-12 text-muted-foreground">
                 No products yet. Tap &quot;Add Product&quot; to add one.
+              </div>
+            ) : products.length === 0 && supplier.products_services ? (
+              <div className="text-center py-12 text-muted-foreground">
+                {supplier.products_services}
+                <p className="mt-2 text-xs">
+                  Shown from the legacy description. Use &quot;Add Product&quot; to structure them.
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
