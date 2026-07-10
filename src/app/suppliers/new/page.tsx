@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/features/auth/application/auth-store';
 import { supplierRepository } from '@/features/suppliers/data/supplier-repository';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, Plus, X } from 'lucide-react';
 
 export default function NewSupplierPage() {
   const router = useRouter();
@@ -53,212 +60,180 @@ export default function NewSupplierPage() {
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <button
-            onClick={() => router.back()}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            ← Cancel
-          </button>
+          <Button variant="ghost" onClick={() => router.back()}>
+            <ArrowLeft />
+            Cancel
+          </Button>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-card rounded-lg border border-border p-8">
-          <h1 className="text-3xl font-bold text-foreground mb-6">Add New Supplier</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-3xl">Add New Supplier</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/30 text-destructive-foreground px-4 py-3 rounded-md mb-6">
+                {error}
+              </div>
+            )}
 
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive-foreground px-4 py-3 rounded-md mb-6">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="business_name" className="block text-sm font-medium text-foreground mb-2">
-                Business Name *
-              </label>
-              <input
-                id="business_name"
-                type="text"
-                value={formData.business_name}
-                onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
-                required
-                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
-              />
-            </div>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <Label htmlFor="business_name">Business Name *</Label>
+                <Input
+                  id="business_name"
+                  type="text"
+                  value={formData.business_name}
+                  onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
+                  required
+                />
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="entity_type" className="block text-sm font-medium text-foreground mb-2">
-                    Entity Type
-                  </label>
-                  <input
+                  <Label htmlFor="entity_type">Entity Type</Label>
+                  <Input
                     id="entity_type"
                     type="text"
                     value={formData.entity_type}
                     onChange={(e) => setFormData({ ...formData, entity_type: e.target.value })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="region" className="block text-sm font-medium text-foreground mb-2">
-                    Region
-                  </label>
-                  <input
+                  <Label htmlFor="region">Region</Label>
+                  <Input
                     id="region"
                     type="text"
                     value={formData.region}
                     onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="products_services" className="block text-sm font-medium text-foreground mb-2">
-                  Products / Services
-                </label>
-                <textarea
+                <Label htmlFor="products_services">Products / Services</Label>
+                <Textarea
                   id="products_services"
                   value={formData.products_services}
                   onChange={(e) => setFormData({ ...formData, products_services: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
                 />
               </div>
 
               <div>
-                <label htmlFor="address" className="block text-sm font-medium text-foreground mb-2">
-                  Address
-                </label>
-                <textarea
+                <Label htmlFor="address">Address</Label>
+                <Textarea
                   id="address"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   rows={2}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-2">
-                    Phone
-                  </label>
-                  <input
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
                     id="phone"
                     type="text"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-                    Email
-                  </label>
-                  <input
+                  <Label htmlFor="email">Email</Label>
+                  <Input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="tin_number" className="block text-sm font-medium text-foreground mb-2">
-                    TIN Number
-                  </label>
-                  <input
+                  <Label htmlFor="tin_number">TIN Number</Label>
+                  <Input
                     id="tin_number"
                     type="text"
                     value={formData.tin_number}
                     onChange={(e) => setFormData({ ...formData, tin_number: e.target.value })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="verification_status" className="block text-sm font-medium text-foreground mb-2">
-                    Verification Status
-                  </label>
-                  <select
-                    id="verification_status"
+                  <Label htmlFor="verification_status">Verification Status</Label>
+                  <Select
                     value={formData.verification_status}
-                    onChange={(e) => setFormData({ ...formData, verification_status: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, verification_status: ((value as string) ?? 'unverified') as typeof formData.verification_status })
+                    }
                   >
-                    <option value="unverified">Unverified</option>
-                    <option value="verified">Verified</option>
-                    <option value="blacklisted">Blacklisted</option>
-                  </select>
+                    <SelectTrigger id="verification_status" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unverified">Unverified</SelectItem>
+                      <SelectItem value="verified">Verified</SelectItem>
+                      <SelectItem value="blacklisted">Blacklisted</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="source_directory" className="block text-sm font-medium text-foreground mb-2">
-                    Source Directory
-                  </label>
-                  <input
+                  <Label htmlFor="source_directory">Source Directory</Label>
+                  <Input
                     id="source_directory"
                     type="text"
                     value={formData.source_directory}
                     onChange={(e) => setFormData({ ...formData, source_directory: e.target.value })}
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
                   />
                 </div>
 
-                <div className="flex items-center">
+                <div className="flex items-center pt-6">
                   <input
                     id="tender_relevant"
                     type="checkbox"
                     checked={formData.tender_relevant}
                     onChange={(e) => setFormData({ ...formData, tender_relevant: e.target.checked })}
-                    className="h-4 w-4 text-primary focus:ring-primary border-border rounded"
+                    className="h-4 w-4 accent-primary rounded border-border"
                   />
-                  <label htmlFor="tender_relevant" className="ml-2 block text-sm text-foreground">
+                  <Label htmlFor="tender_relevant" className="ml-2">
                     Tender Relevant
-                  </label>
+                  </Label>
                 </div>
               </div>
 
               <div>
-                <label htmlFor="notes" className="block text-sm font-medium text-foreground mb-2">
-                  Notes
-                </label>
-                <textarea
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
                   id="notes"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
                 />
               </div>
 
               <div className="flex gap-4">
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
+                <Button type="submit" disabled={isSaving}>
+                  <Plus />
                   {isSaving ? 'Creating...' : 'Create Supplier'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.back()}
-                  className="px-6 py-2 border border-border text-foreground rounded-md hover:bg-accent transition-colors"
-                >
+                </Button>
+                <Button type="button" variant="outline" onClick={() => router.back()}>
+                  <X />
                   Cancel
-                </button>
+                </Button>
               </div>
-          </form>
-        </div>
+            </form>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

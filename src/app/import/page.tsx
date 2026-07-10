@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/features/auth/application/auth-store';
 import { useCsvImportStore } from '@/features/import/application/csv-import-store';
 import { importFields } from '@/features/import/application/csv-import-store';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, LogOut, Upload, RotateCcw, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
 
 export default function ImportPage() {
   const router = useRouter();
@@ -62,62 +67,73 @@ export default function ImportPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => router.push('/suppliers')}
-                className="text-muted-foreground hover:text-foreground"
               >
-                ← Back to Suppliers
-              </button>
-              <h1 className="text-2xl font-bold text-foreground">CSV Import</h1>
+                <ArrowLeft />
+                Back to Suppliers
+              </Button>
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                <FileSpreadsheet className="size-6 text-primary" />
+                CSV Import
+              </h1>
             </div>
-            <button
+            <Button
+              variant="ghost"
               onClick={() => signOut()}
-              className="text-muted-foreground hover:text-foreground transition-colors"
             >
+              <LogOut />
               Sign out
-            </button>
+            </Button>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-card rounded-lg border border-border p-8">
-          {!file ? (
-            <div>
-              <h2 className="text-xl font-semibold text-foreground mb-4">Upload CSV File</h2>
-              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileChange}
-                  disabled={isParsing}
-                  className="hidden"
-                  id="csv-upload"
-                />
-                <label
-                  htmlFor="csv-upload"
-                  className="cursor-pointer inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isParsing ? 'Parsing...' : 'Select CSV File'}
-                </label>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  The first row should contain column headers
-                </p>
+        <Card>
+          <CardContent className="p-8">
+            {!file ? (
+              <div>
+                <h2 className="text-xl font-semibold text-foreground mb-4">Upload CSV File</h2>
+                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                  <FileSpreadsheet className="mx-auto size-10 text-muted-foreground mb-3" />
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileChange}
+                    disabled={isParsing}
+                    className="hidden"
+                    id="csv-upload"
+                  />
+                  <label
+                    htmlFor="csv-upload"
+                    className="cursor-pointer inline-flex items-center"
+                  >
+                    <Button disabled={isParsing}>
+                      <Upload />
+                      {isParsing ? 'Parsing...' : 'Select CSV File'}
+                    </Button>
+                  </label>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    The first row should contain column headers
+                  </p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-foreground">
-                  Map CSV Columns
-                </h2>
-                <button
-                  onClick={handleReset}
-                  className="text-destructive hover:text-destructive/80 transition-colors"
-                >
-                  Reset
-                </button>
-              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold text-foreground">
+                    Map CSV Columns
+                  </h2>
+                  <Button
+                    variant="destructive"
+                    onClick={handleReset}
+                  >
+                    <RotateCcw />
+                    Reset
+                  </Button>
+                </div>
 
               {isParsing ? (
                 <div className="flex justify-center items-center py-12">
@@ -172,15 +188,18 @@ export default function ImportPage() {
 
                   {result && (
                     <div className="bg-primary/10 border border-primary/30 text-primary px-4 py-3 rounded-md mb-6">
-                      <h4 className="font-medium mb-2">Import Complete!</h4>
+                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                        <CheckCircle2 className="size-5" />
+                        Import Complete!
+                      </h4>
                       <p>Suppliers inserted: {result.inserted}</p>
                       <p>Contacts inserted: {result.contactsInserted}</p>
-                      <button
+                      <Button
                         onClick={() => router.push('/suppliers')}
-                        className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                        className="mt-4"
                       >
                         View Suppliers
-                      </button>
+                      </Button>
                     </div>
                   )}
 
@@ -200,19 +219,21 @@ export default function ImportPage() {
                   )}
 
                   {!result && (
-                    <button
+                    <Button
                       onClick={handleImport}
                       disabled={isImporting}
-                      className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="w-full"
                     >
+                      <Upload />
                       {isImporting ? 'Importing...' : 'Import Data'}
-                    </button>
+                    </Button>
                   )}
                 </>
               )}
             </>
           )}
-        </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

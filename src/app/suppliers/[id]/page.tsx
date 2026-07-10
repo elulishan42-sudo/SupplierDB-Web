@@ -3,10 +3,54 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/features/auth/application/auth-store';
+import { useSupplierListStore } from '@/features/suppliers/application/supplier-list-store';
 import { supplierRepository } from '@/features/suppliers/data/supplier-repository';
 import { contactRepository } from '@/features/contacts/data/contact-repository';
+import { productRepository } from '@/features/products/data/product-repository';
 import { Supplier } from '@/features/suppliers/domain/supplier';
 import { Contact } from '@/features/contacts/domain/contact';
+import { Product } from '@/features/products/domain/product';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import {
+  ArrowLeft,
+  Pencil,
+  Trash2,
+  Phone,
+  Mail,
+  LogOut,
+  UserPlus,
+  PackagePlus,
+  Users,
+  Package,
+  MapPin,
+  Save,
+  X,
+} from 'lucide-react';
+
+// Split a phone field that may contain several numbers (comma / slash /
+// semicolon / pipe / newline separated) into individual numbers so each can be
+// rendered on its own line.
+function splitPhones(raw?: string | null): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/[\n,;/|]+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+function formatPrice(product: Product): string | null {
+  const hasPrice = product.price !== null && product.price !== undefined;
+  if (!hasPrice && !product.unit) return null;
+  const price = hasPrice ? Number(product.price).toLocaleString() : null;
+  if (price && product.unit) return `${price} / ${product.unit}`;
+  if (price) return price;
+  return product.unit ? `per ${product.unit}` : null;
+}
 
 export default function SupplierDetailPage() {
   const router = useRouter();
@@ -16,8 +60,12 @@ export default function SupplierDetailPage() {
 
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [contactsLoading, setContactsLoading] = useState(true);
+  const [productsLoading, setProductsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [showContactModal, setShowContactModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [contactForm, setContactForm] = useState({
@@ -27,33 +75,74 @@ export default function SupplierDetailPage() {
     email: '',
   });
 
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productForm, setProductForm] = useState({
+    name: '',
+    description: '',
+    price: '',
+    unit: '',
+  });
+
   useEffect(() => {
     if (!session) {
       router.push('/login');
       return;
     }
 
+    let cancelled = false;
+    const id = params.id as string;
+
+    // Instant paint: reuse the supplier we already have from the list page so
+    // the page renders immediately instead of waiting on the network.
+    const cached = useSupplierListStore.getState().items.find((s) => s.id === id);
+    if (cached) {
+      setSupplier(cached);
+      setIsLoading(false);
+    }
+
     const loadData = async () => {
-      try {
-        setIsLoading(true);
-        const [supplierData, contactsData] = await Promise.all([
-          supplierRepository.getById(params.id as string),
-          contactRepository.forSupplier(params.id as string),
-        ]);
-        setSupplier(supplierData);
-        setContacts(contactsData);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setIsLoading(false);
+      // Fire all three queries in a single parallel wave. Products are
+      // non-fatal: if the table hasn't been migrated yet the rest still works.
+      const [supplierRes, contactsRes, productsRes] = await Promise.allSettled([
+        supplierRepository.getById(id),
+        contactRepository.forSupplier(id),
+        productRepository.forSupplier(id),
+      ]);
+
+      if (cancelled) return;
+
+      if (supplierRes.status === 'fulfilled') {
+        setSupplier(supplierRes.value);
+      } else if (!cached) {
+        setError((supplierRes.reason as Error).message);
       }
+      setIsLoading(false);
+
+      if (contactsRes.status === 'fulfilled') {
+        setContacts(contactsRes.value);
+      } else {
+        console.error('Failed to load contacts:', contactsRes.reason);
+      }
+      setContactsLoading(false);
+
+      if (productsRes.status === 'fulfilled') {
+        setProducts(productsRes.value);
+      } else {
+        console.error('Failed to load products:', productsRes.reason);
+      }
+      setProductsLoading(false);
     };
 
     loadData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [session, router, params.id]);
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this supplier? This will also delete all contacts.')) return;
+    if (!confirm('Are you sure you want to delete this supplier? This will also delete all contacts and products.')) return;
 
     try {
       await supplierRepository.delete(params.id as string);
@@ -63,6 +152,7 @@ export default function SupplierDetailPage() {
     }
   };
 
+  // --- Contacts ---
   const handleAddContact = () => {
     setEditingContact(null);
     setContactForm({ name: '', position: '', phone: '', email: '' });
@@ -114,12 +204,78 @@ export default function SupplierDetailPage() {
     }
   };
 
+  // --- Products ---
+  const handleAddProduct = () => {
+    setEditingProduct(null);
+    setProductForm({ name: '', description: '', price: '', unit: '' });
+    setShowProductModal(true);
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setProductForm({
+      name: product.name,
+      description: product.description || '',
+      price: product.price !== null && product.price !== undefined ? String(product.price) : '',
+      unit: product.unit || '',
+    });
+    setShowProductModal(true);
+  };
+
+  const handleDeleteProduct = async (product: Product) => {
+    if (!confirm(`Delete ${product.name}?`)) return;
+    try {
+      await productRepository.delete(product.id);
+      setProducts(products.filter((p) => p.id !== product.id));
+    } catch (err) {
+      alert(`Failed to delete product: ${(err as Error).message}`);
+    }
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productForm.name.trim()) {
+      alert('Name is required');
+      return;
+    }
+
+    const trimmedPrice = productForm.price.trim();
+    const parsedPrice = trimmedPrice === '' ? null : Number(trimmedPrice);
+    if (parsedPrice !== null && Number.isNaN(parsedPrice)) {
+      alert('Price must be a number');
+      return;
+    }
+
+    const payload = {
+      name: productForm.name.trim(),
+      description: productForm.description.trim() || undefined,
+      price: parsedPrice,
+      unit: productForm.unit.trim() || undefined,
+    };
+
+    try {
+      if (editingProduct) {
+        const updated = await productRepository.update(editingProduct.id, payload);
+        setProducts(products.map((p) => (p.id === editingProduct.id ? updated : p)));
+      } else {
+        const created = await productRepository.create({
+          ...payload,
+          supplier_id: params.id as string,
+        });
+        setProducts([...products, created]);
+      }
+      setShowProductModal(false);
+    } catch (err) {
+      alert(`Failed to save product: ${(err as Error).message}`);
+    }
+  };
+
   if (!session) return null;
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -129,12 +285,10 @@ export default function SupplierDetailPage() {
       <div className="min-h-screen bg-background">
         <header className="bg-card border-b border-border">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <button
-              onClick={() => router.back()}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              ← Back
-            </button>
+            <Button variant="ghost" onClick={() => router.back()}>
+              <ArrowLeft />
+              Back
+            </Button>
           </div>
         </header>
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -146,36 +300,41 @@ export default function SupplierDetailPage() {
     );
   }
 
+  const supplierPhones = splitPhones(supplier.phone);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <button
+            <Button
+              variant="ghost"
               onClick={() => router.push('/suppliers')}
-              className="text-muted-foreground hover:text-foreground"
             >
-              ← Back to Suppliers
-            </button>
+              <ArrowLeft />
+              Back to Suppliers
+            </Button>
             <div className="flex gap-2">
-              <button
+              <Button
                 onClick={() => router.push(`/suppliers/${supplier.id}/edit`)}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
               >
+                <Pencil />
                 Edit
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
                 onClick={handleDelete}
-                className="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors"
               >
+                <Trash2 />
                 Delete
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
                 onClick={() => signOut()}
-                className="text-muted-foreground hover:text-foreground transition-colors"
               >
+                <LogOut />
                 Sign out
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -183,28 +342,34 @@ export default function SupplierDetailPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Company Info Card */}
-        <div className="bg-card rounded-lg border border-border p-6 mb-6">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">
-                {supplier.business_name}
-              </h1>
-              <div className="flex gap-2 text-sm text-muted-foreground">
-                {supplier.region && <span>{supplier.region}</span>}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle className="text-3xl mb-2">{supplier.business_name}</CardTitle>
+                <div className="flex gap-2 text-sm text-muted-foreground">
+                  {supplier.region && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <MapPin className="size-3.5" />
+                      {supplier.region}
+                    </span>
+                  )}
+                </div>
               </div>
+              <Badge
+                variant={
+                  supplier.verification_status === 'verified'
+                    ? 'default'
+                    : supplier.verification_status === 'blacklisted'
+                    ? 'destructive'
+                    : 'secondary'
+                }
+              >
+                {supplier.verification_status}
+              </Badge>
             </div>
-            <span
-              className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                supplier.verification_status === 'verified'
-                  ? 'bg-primary/20 text-primary'
-                  : supplier.verification_status === 'blacklisted'
-                  ? 'bg-destructive/20 text-destructive-foreground'
-                  : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {supplier.verification_status}
-            </span>
-          </div>
+          </CardHeader>
+          <CardContent>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
@@ -226,18 +391,31 @@ export default function SupplierDetailPage() {
                   {supplier.address}
                 </p>
               )}
-              {supplier.phone && (
-                <p>
-                  <span className="font-medium text-foreground">Phone:</span>{' '}
-                  <a href={`tel:${supplier.phone}`} className="text-primary hover:underline">
-                    {supplier.phone}
-                  </a>
-                </p>
+              {supplierPhones.length > 0 && (
+                <div>
+                  <span className="font-medium text-foreground">Phone:</span>
+                  <div className="mt-1 flex flex-col gap-1">
+                    {supplierPhones.map((phone) => (
+                      <a
+                        key={phone}
+                        href={`tel:${phone}`}
+                        className="text-primary hover:underline inline-flex items-center gap-1.5 w-fit"
+                      >
+                        <Phone className="size-3.5" />
+                        {phone}
+                      </a>
+                    ))}
+                  </div>
+                </div>
               )}
               {supplier.email && (
                 <p>
                   <span className="font-medium text-foreground">Email:</span>{' '}
-                  <a href={`mailto:${supplier.email}`} className="text-primary hover:underline">
+                  <a
+                    href={`mailto:${supplier.email}`}
+                    className="text-primary hover:underline inline-flex items-center gap-1.5 align-middle"
+                  >
+                    <Mail className="size-3.5" />
                     {supplier.email}
                   </a>
                 </p>
@@ -269,150 +447,297 @@ export default function SupplierDetailPage() {
               )}
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* Contact Persons Section */}
-        <div className="bg-card rounded-lg border border-border p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-foreground">Contact Persons</h2>
-            <button
-              onClick={handleAddContact}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-            >
-              Add Contact
-            </button>
-          </div>
+        {/* Contact Persons + Products side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* Contact Persons Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="size-5 text-muted-foreground" />
+                  Contact Persons
+                </CardTitle>
+                <Button onClick={handleAddContact}>
+                  <UserPlus />
+                  Add Contact
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
 
-          {contacts.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No contact persons yet. Tap "Add Contact" to add one.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {contacts.map((contact) => (
-                <div
-                  key={contact.id}
-                  className="bg-muted rounded-lg p-4 border border-border"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-foreground">{contact.name}</h3>
-                      {contact.position && (
-                        <p className="text-sm text-muted-foreground">{contact.position}</p>
-                      )}
-                      <div className="mt-2 space-y-1 text-sm">
-                        {contact.phone && (
-                          <a
-                            href={`tel:${contact.phone}`}
-                            className="text-primary hover:underline flex items-center gap-1"
+            {contactsLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : contacts.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No contact persons yet. Tap &quot;Add Contact&quot; to add one.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {contacts.map((contact) => (
+                  <Card key={contact.id}>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-foreground">{contact.name}</h3>
+                          {contact.position && (
+                            <p className="text-sm text-muted-foreground">{contact.position}</p>
+                          )}
+                          <div className="mt-2 space-y-1 text-sm">
+                            {splitPhones(contact.phone).map((phone) => (
+                              <a
+                                key={phone}
+                                href={`tel:${phone}`}
+                                className="text-primary hover:underline flex items-center gap-1.5 w-fit"
+                              >
+                                <Phone className="size-3.5" />
+                                {phone}
+                              </a>
+                            ))}
+                            {contact.email && (
+                              <a
+                                href={`mailto:${contact.email}`}
+                                className="text-primary hover:underline flex items-center gap-1.5 w-fit"
+                              >
+                                <Mail className="size-3.5" />
+                                {contact.email}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditContact(contact)}
+                            title="Edit"
                           >
-                            📞 {contact.phone}
-                          </a>
-                        )}
-                        {contact.email && (
-                          <a
-                            href={`mailto:${contact.email}`}
-                            className="text-primary hover:underline flex items-center gap-1"
+                            <Pencil />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteContact(contact)}
+                            className="text-destructive hover:text-destructive/80"
+                            title="Delete"
                           >
-                            ✉️ {contact.email}
-                          </a>
-                        )}
+                            <Trash2 />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditContact(contact)}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                        title="Edit"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => handleDeleteContact(contact)}
-                        className="text-destructive hover:text-destructive/80 transition-colors"
-                        title="Delete"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            </CardContent>
+          </Card>
+
+          {/* Products Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="size-5 text-muted-foreground" />
+                  Products
+                </CardTitle>
+                <Button onClick={handleAddProduct}>
+                  <PackagePlus />
+                  Add Product
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+
+            {productsLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No products yet. Tap &quot;Add Product&quot; to add one.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {products.map((product) => {
+                  const priceLabel = formatPrice(product);
+                  return (
+                    <Card key={product.id}>
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-medium text-foreground">{product.name}</h3>
+                              {priceLabel && <Badge variant="secondary">{priceLabel}</Badge>}
+                            </div>
+                            {product.description && (
+                              <p className="mt-1 text-sm text-muted-foreground">{product.description}</p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditProduct(product)}
+                              title="Edit"
+                            >
+                              <Pencil />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteProduct(product)}
+                              className="text-destructive hover:text-destructive/80"
+                              title="Delete"
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+            </CardContent>
+          </Card>
         </div>
       </main>
 
       {/* Contact Modal */}
       {showContactModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-card rounded-lg shadow-lg max-w-md w-full p-6 border border-border">
-            <h2 className="text-xl font-semibold text-foreground mb-4">
-              {editingContact ? 'Edit Contact' : 'Add Contact'}
-            </h2>
-            <form onSubmit={handleSaveContact} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={contactForm.name}
-                  onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                  required
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Position / Role
-                </label>
-                <input
-                  type="text"
-                  value={contactForm.position}
-                  onChange={(e) => setContactForm({ ...contactForm, position: e.target.value })}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  value={contactForm.phone}
-                  onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={contactForm.email}
-                  onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background"
-                />
-              </div>
-              <div className="flex gap-2 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowContactModal(false)}
-                  className="flex-1 px-4 py-2 border border-border text-foreground rounded-md hover:bg-muted transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
+          <Card className="max-w-md w-full">
+            <CardHeader>
+              <CardTitle>{editingContact ? 'Edit Contact' : 'Add Contact'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveContact} className="space-y-4">
+                <div>
+                  <Label>Name *</Label>
+                  <Input
+                    type="text"
+                    value={contactForm.name}
+                    onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>Position / Role</Label>
+                  <Input
+                    type="text"
+                    value={contactForm.position}
+                    onChange={(e) => setContactForm({ ...contactForm, position: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Phone</Label>
+                  <Input
+                    type="tel"
+                    value={contactForm.phone}
+                    onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
+                    placeholder="Separate multiple numbers with a comma"
+                  />
+                </div>
+                <div>
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    value={contactForm.email}
+                    onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                  />
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button type="submit" className="flex-1">
+                    <Save />
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowContactModal(false)}
+                    className="flex-1"
+                  >
+                    <X />
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Product Modal */}
+      {showProductModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="max-w-md w-full">
+            <CardHeader>
+              <CardTitle>{editingProduct ? 'Edit Product' : 'Add Product'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveProduct} className="space-y-4">
+                <div>
+                  <Label>Name *</Label>
+                  <Input
+                    type="text"
+                    value={productForm.name}
+                    onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>Description</Label>
+                  <Textarea
+                    value={productForm.description}
+                    onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Price</Label>
+                    <Input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={productForm.price}
+                      onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Unit</Label>
+                    <Input
+                      type="text"
+                      value={productForm.unit}
+                      onChange={(e) => setProductForm({ ...productForm, unit: e.target.value })}
+                      placeholder="e.g. kg, item, box"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button type="submit" className="flex-1">
+                    <Save />
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowProductModal(false)}
+                    className="flex-1"
+                  >
+                    <X />
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

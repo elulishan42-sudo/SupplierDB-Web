@@ -7,6 +7,13 @@ import { useSupplierListStore } from '@/features/suppliers/application/supplier-
 import { Supplier } from '@/features/suppliers/domain/supplier';
 import { useCategoriesStore } from '@/features/categories/application/categories-store';
 import { supplierRepository } from '@/features/suppliers/data/supplier-repository';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Search, SlidersHorizontal, Plus, Tags, LogOut, MapPin, Building2, Package } from 'lucide-react';
 
 export default function SuppliersPage() {
   const router = useRouter();
@@ -109,20 +116,25 @@ export default function SuppliersPage() {
       <header className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-foreground">Suppliers</h1>
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Building2 className="size-6 text-primary" />
+              Suppliers
+            </h1>
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => router.push('/categories')}
-                className="text-muted-foreground hover:text-foreground transition-colors"
               >
+                <Tags />
                 Categories
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
                 onClick={() => signOut()}
-                className="text-muted-foreground hover:text-foreground transition-colors"
               >
+                <LogOut />
                 Sign out
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -131,118 +143,118 @@ export default function SuppliersPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6 space-y-4">
             <div className="flex gap-2">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Search name, products..."
-                className="flex-1 px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
-              />
-              <button
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  placeholder="Search name, products..."
+                  className="w-full pl-8"
+                />
+              </div>
+              <Button
+                variant="outline"
                 onClick={() => setShowFilters(!showFilters)}
-                className="px-4 py-2 border border-border rounded-md hover:bg-accent transition-colors flex items-center gap-2"
+                className="flex items-center gap-2"
               >
+                <SlidersHorizontal />
                 <span>Filters</span>
                 {(localFilters.categoryId || localFilters.entityType || localFilters.region || localFilters.tenderRelevant || localFilters.verificationStatus) && (
                   <span className="w-2 h-2 bg-primary rounded-full"></span>
                 )}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => router.push('/suppliers/new')}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
               >
+                <Plus />
                 Add Supplier
-              </button>
+              </Button>
             </div>
 
             {showFilters && (
-              <div className="bg-card rounded-lg border border-border p-6 space-y-4">
+              <Card className="p-6 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Category</label>
-                    <select
-                      value={localFilters.categoryId}
-                      onChange={(e) => setLocalFilters({ ...localFilters, categoryId: e.target.value })}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
-                    >
-                      <option value="">All</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
+                    <Label>Category</Label>
+                    <Select value={localFilters.categoryId} onValueChange={(value) => setLocalFilters({ ...localFilters, categoryId: (value as string) ?? '' })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All</SelectItem>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Entity Type</label>
-                    <select
-                      value={localFilters.entityType}
-                      onChange={(e) => setLocalFilters({ ...localFilters, entityType: e.target.value })}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
-                    >
-                      <option value="">All</option>
-                      {availableEntityTypes.map((type) => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
+                    <Label>Entity Type</Label>
+                    <Select value={localFilters.entityType} onValueChange={(value) => setLocalFilters({ ...localFilters, entityType: (value as string) ?? '' })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All</SelectItem>
+                        {availableEntityTypes.map((type) => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Region</label>
-                    <select
-                      value={localFilters.region}
-                      onChange={(e) => setLocalFilters({ ...localFilters, region: e.target.value })}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
-                    >
-                      <option value="">All</option>
-                      {availableRegions.map((region) => (
-                        <option key={region} value={region}>{region}</option>
-                      ))}
-                    </select>
+                    <Label>Region</Label>
+                    <Select value={localFilters.region} onValueChange={(value) => setLocalFilters({ ...localFilters, region: (value as string) ?? '' })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All</SelectItem>
+                        {availableRegions.map((region) => (
+                          <SelectItem key={region} value={region}>{region}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Tender Relevant</label>
-                    <select
-                      value={localFilters.tenderRelevant}
-                      onChange={(e) => setLocalFilters({ ...localFilters, tenderRelevant: e.target.value })}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
-                    >
-                      <option value="">All</option>
-                      <option value="true">Yes</option>
-                      <option value="false">No</option>
-                    </select>
+                    <Label>Tender Relevant</Label>
+                    <Select value={localFilters.tenderRelevant} onValueChange={(value) => setLocalFilters({ ...localFilters, tenderRelevant: (value as string) ?? '' })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All</SelectItem>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Verification Status</label>
-                    <select
-                      value={localFilters.verificationStatus}
-                      onChange={(e) => setLocalFilters({ ...localFilters, verificationStatus: e.target.value })}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-input"
-                    >
-                      <option value="">All</option>
-                      <option value="unverified">Unverified</option>
-                      <option value="verified">Verified</option>
-                      <option value="blacklisted">Blacklisted</option>
-                    </select>
+                    <Label>Verification Status</Label>
+                    <Select value={localFilters.verificationStatus} onValueChange={(value) => setLocalFilters({ ...localFilters, verificationStatus: (value as string) ?? '' })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All</SelectItem>
+                        <SelectItem value="unverified">Unverified</SelectItem>
+                        <SelectItem value="verified">Verified</SelectItem>
+                        <SelectItem value="blacklisted">Blacklisted</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
                 <div className="flex gap-2">
-                  <button
-                    onClick={handleApplyFilters}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-                  >
-                    Apply Filters
-                  </button>
-                  <button
-                    onClick={handleResetFilters}
-                    className="px-4 py-2 border border-border text-foreground rounded-md hover:bg-accent transition-colors"
-                  >
-                    Reset
-                  </button>
+                  <Button onClick={handleApplyFilters}>Apply Filters</Button>
+                  <Button variant="outline" onClick={handleResetFilters}>Reset</Button>
                 </div>
-              </div>
+              </Card>
             )}
           </div>
 
@@ -270,54 +282,57 @@ export default function SuppliersPage() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {items.map((supplier: Supplier) => (
-                  <div
+                  <Card
                     key={supplier.id}
-                    className="bg-card rounded-lg border border-border p-6 hover:border-primary/50 transition-shadow cursor-pointer"
+                    className="hover:border-primary/50 transition-shadow cursor-pointer"
                     onClick={() => router.push(`/suppliers/${supplier.id}`)}
+                    onMouseEnter={() => router.prefetch(`/suppliers/${supplier.id}`)}
                   >
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      {supplier.business_name}
-                    </h3>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      {supplier.region && (
-                        <p>
-                          <span className="font-medium text-foreground">Region:</span> {supplier.region}
-                        </p>
-                      )}
-                      {supplier.products_services && (
-                        <p className="line-clamp-2">
-                          <span className="font-medium text-foreground">Products:</span>{' '}
-                          {supplier.products_services}
-                        </p>
-                      )}
-                      <p>
-                        <span className="font-medium text-foreground">Status:</span>{' '}
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                            supplier.verification_status === 'verified'
-                              ? 'bg-primary/20 text-primary'
-                              : supplier.verification_status === 'blacklisted'
-                              ? 'bg-destructive/20 text-destructive-foreground'
-                              : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {supplier.verification_status}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
+                    <CardHeader>
+                      <CardTitle className="text-lg">{supplier.business_name}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm">
+                        {supplier.region && (
+                          <p className="text-muted-foreground flex items-center gap-1.5">
+                            <MapPin className="size-3.5 shrink-0" />
+                            {supplier.region}
+                          </p>
+                        )}
+                        {supplier.products_services && (
+                          <p className="text-muted-foreground line-clamp-2 flex items-start gap-1.5">
+                            <Package className="size-3.5 shrink-0 mt-0.5" />
+                            <span>{supplier.products_services}</span>
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground">Status:</span>
+                          <Badge
+                            variant={
+                              supplier.verification_status === 'verified'
+                                ? 'default'
+                                : supplier.verification_status === 'blacklisted'
+                                ? 'destructive'
+                                : 'secondary'
+                            }
+                          >
+                            {supplier.verification_status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
 
               {hasMore && (
                 <div className="mt-8 text-center">
-                  <button
+                  <Button
                     onClick={handleLoadMore}
                     disabled={isLoadingMore}
-                    className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {isLoadingMore ? 'Loading...' : 'Load more'}
-                  </button>
+                  </Button>
                 </div>
               )}
             </>
